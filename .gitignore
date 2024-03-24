@@ -163,7 +163,4 @@ api.py
 data.csv
 newDataset.py
 datasets
-balanced_data.csv
 
-model.pkl
-countVectorizer.pkl
