@@ -164,4 +164,6 @@ data.csv
 newDataset.py
 datasets
 balanced_data.csv
-*.pkl
+
+model.pkl
+countVectorizer.pkl
