@@ -1,64 +1,47 @@
-import pandas as pd
-import re
-import threading
-import zeyrek
-from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 import pickle
-
-DF = pd.read_csv("data.csv")
-
-volume = 100000
-
-sentences = DF.iloc[:volume, 0]
-
-
-lemmatized_sentences = []
-
-
-def lemmatize_all(sentences, lemmatized_sentences):
-    length = sentences.shape[0]
-
-    for i in range(length):
-        lemmatized_sentences.append(lemmatize_sentence(sentences[i]))
-
-
-analyzer = zeyrek.MorphAnalyzer()
-
-
-def lemmatize_sentence(sentence):
-
-    sentence = re.sub("[^a-zA-ZçÇğĞıİöÖşŞüÜ]", " ", sentence)
-    sentence = sentence.split()
-    sentence = [
-        analyzer.lemmatize(word)[0][1][0].lower()
-        for word in sentence
-        if not word in set(stopwords.words("turkish"))
-    ]
-    return sentence
-
+from read_from_lemmatized import read_lemmantized
+from preprocess import set_Y
+import pandas as pd
 
 if __name__ == "__main__":
 
-    lemmatize_all(sentences, lemmatized_sentences)
+    source = "lemmatized.csv"
 
-    cv = CountVectorizer(max_features=3000)
+    lemmatized_sentences = read_lemmantized(source)
 
-    X = cv.fit_transform(sentences).toarray()
-    Y = DF.iloc[:volume, 1]
+    cv = CountVectorizer(max_features=2000)
+
+    ## Ever you update your dataset. it's enough that execute these code once .
+
+    for i in range(len(lemmatized_sentences) - 1, 0, -1):
+
+        try:
+            X = cv.fit_transform([lemmatized_sentences[i]]).toarray()
+            print(i)
+        except:
+            print(f"{i}. index is not transformable.")
+            lemmatized_sentences.pop(i)
+
+    pd.DataFrame(lemmatized_sentences).to_csv(source, index=False)
+
+    ##
+
+    X = cv.fit_transform(lemmatized_sentences).toarray()
+    Y = set_Y(len(lemmatized_sentences))
 
     from sklearn.model_selection import train_test_split
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, Y, random_state=104, test_size=0.25, shuffle=True
+        X, Y, random_state=104, test_size=0.33, shuffle=True
     )
 
-    from sklearn.naive_bayes import GaussianNB
+    from sklearn.naive_bayes import MultinomialNB
 
-    gnb = GaussianNB()
-    gnb.fit(X_train, y_train)
+    mnb = MultinomialNB(alpha=1.2123)
+    mnb.fit(X_train, y_train)
 
-    y_pred = gnb.predict(X_test)
+    y_pred = mnb.predict(X_test)
 
     from sklearn.metrics import confusion_matrix
 
@@ -66,7 +49,7 @@ if __name__ == "__main__":
     print(cm)
 
     with open("model.pkl", "wb") as model_file:
-        pickle.dump(gnb, model_file)
+        pickle.dump(mnb, model_file)
 
     with open("countVectorizer.pkl", "wb") as model_file:
         pickle.dump(cv, model_file)
